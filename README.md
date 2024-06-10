@@ -6,7 +6,7 @@ Selenium.
 [text](https://selenium-python.readthedocs.io/)
 
 Instalación y carga de páginas
-Para utilizar Selenium debemos, en primer lugar, instalar el propio paquete. La
+para utilizar Selenium debemos, en primer lugar, instalar el propio paquete. La
 instalación se hace de la misma forma que cualquier paquete Python; el método
 estándar es tecleando en el terminal:
 python -m pip install selenium
