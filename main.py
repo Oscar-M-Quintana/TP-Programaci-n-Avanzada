@@ -19,11 +19,13 @@ def registrar_busqueda(func):
     def wrapper(*args, **kwargs):
         resultado = func(*args, **kwargs)
         busqueda = args[0]
-        productos = [str(producto) for producto in busqueda.productos]
+        # Limitar a los primeros 10 productos
+        productos = [str(producto) for producto in busqueda.productos[:10]]
         data = {
             'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'busqueda': busqueda.url,
-            'productos': busqueda.productos  # Guardar los objetos Producto directamente
+            # Guardar solo los primeros 10 objetos Producto
+            'productos': busqueda.productos[:10]
         }
         guardar_registro(data)
         return resultado
@@ -35,20 +37,14 @@ def guardar_registro(data):
     with open('registro_busquedas.csv', mode='a', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         if not file_exists:
-            # Escribir título de referencia si el archivo no existe
-            writer.writerow(['Registros de Búsquedas'])
+            writer.writerow(
+                ['Fecha de búsqueda', 'Producto', 'Precio'])
 
-        # Escribir los datos en celdas diferentes
-        writer.writerow(['Fecha de búsqueda', 'Producto'])
-        writer.writerow([data['fecha'], data['busqueda']])
+        for producto in data['productos']:
+            writer.writerow([data['fecha'],
+                            producto.nombre, producto.precio])
 
-        # Escribir los productos en celdas diferentes con cabecera
-        writer.writerow(['Número de Orden', 'Producto', 'Precio'])
-        for idx, producto in enumerate(data['productos'], start=1):
-            writer.writerow([idx, producto.nombre, producto.precio])
-
-        # Añadir línea vacía para separar búsquedas
-        writer.writerow([])
+        writer.writerow([])  # Separador entre búsquedas
 
 
 class BuscadorProductos:
@@ -69,7 +65,8 @@ class BuscadorProductos:
         lista_productos = soup.find_all(
             'li', {'class': 'ui-search-layout__item'})
 
-        for producto in lista_productos:
+        # Limitar a los primeros 10 productos
+        for idx, producto in enumerate(lista_productos[:10], start=1):
             try:
                 nombre = producto.find(
                     'h2', {'class': 'ui-search-item__title'})
@@ -90,16 +87,11 @@ class BuscadorProductos:
 
     def productos_a_dataframe(self):
         return pd.DataFrame(
+            # Limitar a los primeros 10 productos
             [(producto.nombre, producto.precio)
-             for producto in self.productos],
+             for producto in self.productos[:10]],
             columns=["Producto", "Precio"]
         )
-
-    def generar_mensaje_whatsapp(self):
-        mensaje = "Productos encontrados:\n\n"
-        for producto in self.productos:
-            mensaje += f"{producto}\n"
-        return mensaje
 
 
 def main():
@@ -111,13 +103,8 @@ def main():
     buscador.obtener_productos()
 
     df = buscador.productos_a_dataframe()
-    print("hola")
+    print("Los primeros 10 productos encontrados:")
     print(df)
-    print("chau")
-
-    mensaje = buscador.generar_mensaje_whatsapp()
-    print("\nMensaje para enviar por WhatsApp:")
-    print(mensaje)
 
 
 if __name__ == "__main__":
