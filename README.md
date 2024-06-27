@@ -1,7 +1,11 @@
 # Buscador de Productos
 
 Este proyecto es una aplicación en Python que busca productos en MercadoLibre a partir de términos de búsqueda específicos. Los resultados se registran en un archivo CSV para su posterior análisis.
-Los integrantes de este proyecto son: Rocío Palacios, Nicolas Ozimuk y Oscar Quintana (grupo 18, comision 2). 
+
+## Integrantes del proyecto
+-Rocío Palacios
+-Nicolas Ozimuk
+-Oscar Quintana 
 
 ## Descripción
 
