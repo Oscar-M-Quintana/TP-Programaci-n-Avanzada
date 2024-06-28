@@ -9,6 +9,14 @@ import pandas as pd
 
 
 class Producto:
+    """
+    Clase que representa un producto con nombre y precio.
+
+    Attributes:
+        nombre (str): El nombre del producto.
+        precio (str): El precio del producto.
+    """
+
     def __init__(self, nombre, precio):
         self.nombre = nombre
         self.precio = precio
@@ -18,6 +26,15 @@ class Producto:
 
 
 def registrar_busqueda(func):
+    """
+    Decorador para registrar la búsqueda de productos.
+
+    Args:
+        func (function): La función que se decora.
+
+    Returns:
+        function: La función decorada.
+    """
     def wrapper(*args, **kwargs):
         resultado = func(*args, **kwargs)
         busqueda = args[0]
@@ -34,6 +51,14 @@ def registrar_busqueda(func):
 
 
 def guardar_registro(data, marca, codigo):
+    """
+    Guarda el registro de búsqueda en un archivo CSV.
+
+    Args:
+        data (dict): Datos de la búsqueda.
+        marca (str): Marca del producto.
+        codigo (str): Código del producto.
+    """
     filename = f'registro_busquedas_{marca}.csv'
     file_exists = os.path.isfile(filename)
     with open(filename, mode='a', newline='', encoding='utf-8-sig') as file:
@@ -52,6 +77,16 @@ def guardar_registro(data, marca, codigo):
 
 
 class BuscadorProductos:
+    """
+    Clase que realiza la búsqueda de productos en MercadoLibre.
+
+    Attributes:
+        url (str): URL de la búsqueda en MercadoLibre.
+        marca (str): Marca del producto.
+        codigo (str): Código del producto.
+        productos (list): Lista de productos encontrados.
+    """
+
     def __init__(self, url, marca, codigo):
         self.url = url
         self.marca = marca
@@ -60,8 +95,11 @@ class BuscadorProductos:
 
     @registrar_busqueda
     def obtener_productos(self):
+        """
+        Obtiene los productos de la página de búsqueda y los guarda en la lista de productos.
+        """
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
         response = requests.get(self.url, headers=headers)
         if response.status_code == 200:
@@ -91,10 +129,19 @@ class BuscadorProductos:
             print(f"Error al acceder a la URL: {response.status_code}")
 
     def productos_a_dataframe(self):
+        """
+        Convierte la lista de productos en un DataFrame de pandas.
+
+        Returns:
+            DataFrame: DataFrame con los productos y precios.
+        """
         return pd.DataFrame([(producto.nombre, producto.precio) for producto in self.productos], columns=["Producto", "Precio"])
 
 
 def main():
+    """
+    Función principal que realiza la búsqueda de productos y guarda los resultados.
+    """
     terminos_busqueda = [
         ("Smart Tv 50 Pulgadas 4k Ultra Hd 50uq8050psb - LG", "LG", "50uq8050psb"),
         ("smart tv samsung 50 Un50cu7000 led 4k", "Samsung", "un50cu7000"),
