@@ -3,8 +3,8 @@ import csv
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 import tkinter as tk
+import tkinter.font as tkFont
 from tkinter import ttk, messagebox
 
 
@@ -25,46 +25,6 @@ class Producto:
         return f"{self.nombre}: {self.precio}"
 
 
-def registrar_busqueda(func):
-    """
-    Decorador para registrar las búsquedas de productos.
-
-    Args:
-        func (function): La función que realiza la búsqueda de productos.
-
-    Returns:
-        function: La función decorada que registra la búsqueda.
-    """
-    def wrapper(*args, **kwargs):
-        resultado = func(*args, **kwargs)
-        busqueda = args[0]
-        data = {
-            'fecha': datetime.now().strftime("%Y-%m-%d"),
-            'busqueda': busqueda.url,
-            'productos': busqueda.productos,
-            'codigo': busqueda.codigo
-        }
-        guardar_registro(data, busqueda.marca)
-        return resultado
-    return wrapper
-
-
-def guardar_registro(data, marca):
-    """
-    Guarda un registro de la búsqueda en un archivo CSV específico para cada marca.
-
-    Args:
-        data (dict): Un diccionario con los datos de la búsqueda.
-        marca (str): La marca del producto buscado.
-    """
-    filename = f'{marca}.csv'
-    with open(filename, mode='w', newline='', encoding='utf-8-sig') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Fecha de búsqueda', 'Producto', 'Precio'])
-        for producto in data['productos']:
-            writer.writerow([data['fecha'], producto.nombre, producto.precio])
-
-
 class BuscadorProductos:
     """
     Clase que busca productos en una URL específica y registra los resultados.
@@ -72,17 +32,14 @@ class BuscadorProductos:
     Attributes:
         url (str): La URL de búsqueda.
         marca (str): La marca del producto buscado.
-        codigo (str): El código asociado a la búsqueda.
         productos (list): Una lista de productos encontrados.
     """
 
-    def __init__(self, url, marca, codigo):
+    def __init__(self, url, marca):
         self.url = url
         self.marca = marca
-        self.codigo = codigo
         self.productos = []
 
-    @registrar_busqueda
     def obtener_productos(self):
         """
         Obtiene productos de la URL y los almacena en la lista de productos.
@@ -106,115 +63,163 @@ class BuscadorProductos:
                     precio = producto.find(
                         'span', {'class': 'andes-money-amount__fraction'})
                     precio = simbolo_moneda + precio.text.strip() if precio else "No disponible"
-                    self.productos.append(Producto(nombre, precio))
+
+                    # Verificar si el nombre del producto contiene la marca
+                    if self.marca.lower() in nombre.lower():
+                        self.productos.append(Producto(nombre, precio))
                 except AttributeError as e:
                     print(f"Error al procesar el producto: {e}")
                     continue
         else:
             print(f"Error al acceder a la URL: {response.status_code}")
 
-    def productos_a_dataframe(self):
+    def guardar_registro(self):
         """
-        Convierte la lista de productos a un DataFrame de pandas.
-
-        Returns:
-            DataFrame: Un DataFrame con los productos y sus precios.
+        Guarda un registro de la búsqueda en un archivo CSV.
         """
-        return pd.DataFrame([(producto.nombre, producto.precio) for producto in self.productos], columns=["Producto", "Precio"])
+        filename = f'{self.marca}.csv'
+        with open(filename, mode='w', newline='', encoding='utf-8-sig') as file:
+            writer = csv.writer(file)
+            writer.writerow(
+                ['Orden', 'Fecha de búsqueda', 'Producto', 'Precio'])
+            for index, producto in enumerate(self.productos, start=1):
+                writer.writerow([index, datetime.now().strftime(
+                    "%Y-%m-%d"), producto.nombre, producto.precio])
 
 
-def realizar_busqueda(producto, marca1, marca2, treeview1, treeview2):
+class InterfazGrafica:
     """
-    Realiza la búsqueda de productos y muestra los resultados en dos tablas.
+    Clase que maneja la interfaz gráfica de la aplicación.
 
-    Args:
-        producto (str): El nombre del producto a buscar.
-        marca1 (str): La primera marca a buscar.
-        marca2 (str): La segunda marca a buscar.
-        treeview1 (ttk.Treeview): El árbol para mostrar los productos de la marca 1.
-        treeview2 (ttk.Treeview): El árbol para mostrar los productos de la marca 2.
+    Attributes:
+        root (tk.Tk): La ventana principal de tkinter.
     """
-    terminos_busqueda = [
-        (f"{producto} {marca1}", marca1),
-        (f"{producto} {marca2}", marca2)
-    ]
 
-    treeview1.delete(*treeview1.get_children())
-    treeview2.delete(*treeview2.get_children())
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Comparador de Productos")
 
-    for busqueda, marca in terminos_busqueda:
-        busqueda_url = busqueda.strip().replace(" ", "-")
-        url_busqueda = f'https://listado.mercadolibre.com.ar/{busqueda_url}#D[A:{busqueda.replace(" ", "%20")}]'
+        # Estilo y tamaño de la fuente
+        default_font = tkFont.nametofont("TkDefaultFont")
+        default_font.configure(size=12)
+        self.root.option_add("*Font", default_font)
 
-        buscador = BuscadorProductos(url_busqueda, marca, "")
-        buscador.obtener_productos()
+        # Creación de los widgets
+        tk.Label(self.root, text="Producto:").grid(
+            row=0, column=0, padx=10, pady=10, sticky="w")
+        self.producto_entry = tk.Entry(self.root, width=30)
+        self.producto_entry.grid(
+            row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        for producto in buscador.productos:
-            if marca == marca1:
-                treeview1.insert('', 'end', values=(
-                    producto.nombre, producto.precio))
-            else:
-                treeview2.insert('', 'end', values=(
-                    producto.nombre, producto.precio))
+        tk.Label(self.root, text="Marca 1:").grid(
+            row=1, column=0, padx=10, pady=10, sticky="w")
+        self.marca1_entry = tk.Entry(self.root, width=30)
+        self.marca1_entry.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        # Guardar resultados en CSV separados para cada marca
-        guardar_registro({'fecha': datetime.now().strftime(
-            "%Y-%m-%d"), 'busqueda': busqueda_url, 'productos': buscador.productos}, marca)
+        tk.Label(self.root, text="Marca 2:").grid(
+            row=2, column=0, padx=10, pady=10, sticky="w")
+        self.marca2_entry = tk.Entry(self.root, width=30)
+        self.marca2_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
+        # Botón de búsqueda
+        search_button = tk.Button(
+            self.root, text="Buscar", command=self.on_buscar, width=10)
+        search_button.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
-def main():
-    """
-    Función principal que crea la interfaz gráfica y maneja la lógica de la aplicación.
-    """
-    root = tk.Tk()
-    root.title("Comparador de Productos")
+        self.frame1 = tk.LabelFrame(
+            self.root, text="Resultados Marca 1", padx=10, pady=10)
+        self.frame1.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
+        self.treeview1 = ttk.Treeview(self.frame1, columns=(
+            "Orden", "Producto", "Precio"), show="headings")
+        self.treeview1.heading("Orden", text="Orden", anchor="center")
+        self.treeview1.heading("Producto", text="Producto", anchor="center")
+        self.treeview1.heading("Precio", text="Precio", anchor="center")
+        self.treeview1.column("Orden", width=50, anchor="center")
+        self.treeview1.pack(fill=tk.BOTH, expand=True)
 
-    tk.Label(root, text="Producto:").grid(row=0, column=0, padx=10, pady=10)
-    producto_entry = tk.Entry(root)
-    producto_entry.grid(row=0, column=1, padx=10, pady=10)
+        self.frame2 = tk.LabelFrame(
+            self.root, text="Resultados Marca 2", padx=10, pady=10)
+        self.frame2.grid(row=4, column=1, padx=10, pady=10, sticky="nsew")
+        self.treeview2 = ttk.Treeview(self.frame2, columns=(
+            "Orden", "Producto", "Precio"), show="headings")
+        self.treeview2.heading("Orden", text="Orden", anchor="center")
+        self.treeview2.heading("Producto", text="Producto", anchor="center")
+        self.treeview2.heading("Precio", text="Precio", anchor="center")
+        self.treeview2.column("Orden", width=50, anchor="center")
+        self.treeview2.pack(fill=tk.BOTH, expand=True)
 
-    tk.Label(root, text="Marca 1:").grid(row=1, column=0, padx=10, pady=10)
-    marca1_entry = tk.Entry(root)
-    marca1_entry.grid(row=1, column=1, padx=10, pady=10)
+        # Ajustar tamaño de los frames al expandir la ventana principal
+        self.root.grid_rowconfigure(4, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
 
-    tk.Label(root, text="Marca 2:").grid(row=2, column=0, padx=10, pady=10)
-    marca2_entry = tk.Entry(root)
-    marca2_entry.grid(row=2, column=1, padx=10, pady=10)
-
-    frame1 = tk.LabelFrame(
-        root, text=f"Resultados Marca 1 - {marca1_entry.get()}", padx=10, pady=10)
-    frame1.grid(row=3, column=0, padx=10, pady=10)
-    treeview1 = ttk.Treeview(frame1, columns=(
-        "Producto", "Precio"), show="headings")
-    treeview1.heading("Producto", text="Producto")
-    treeview1.heading("Precio", text="Precio")
-    treeview1.pack()
-
-    frame2 = tk.LabelFrame(
-        root, text=f"Resultados Marca 2 - {marca2_entry.get()}", padx=10, pady=10)
-    frame2.grid(row=3, column=1, padx=10, pady=10)
-    treeview2 = ttk.Treeview(frame2, columns=(
-        "Producto", "Precio"), show="headings")
-    treeview2.heading("Producto", text="Producto")
-    treeview2.heading("Precio", text="Precio")
-    treeview2.pack()
-
-    def on_buscar():
+    def on_buscar(self):
         """
         Función que se ejecuta al hacer clic en el botón de buscar.
         """
-        producto = producto_entry.get()
-        marca1 = marca1_entry.get()
-        marca2 = marca2_entry.get()
+        producto = self.producto_entry.get()
+        marca1 = self.marca1_entry.get()
+        marca2 = self.marca2_entry.get()
         if producto and marca1 and marca2:
-            realizar_busqueda(producto, marca1, marca2, treeview1, treeview2)
+            buscador1 = BuscadorProductos(
+                self.construir_url(producto, marca1), marca1)
+            buscador2 = BuscadorProductos(
+                self.construir_url(producto, marca2), marca2)
+            buscador1.obtener_productos()
+            buscador2.obtener_productos()
+            self.mostrar_resultados(buscador1, buscador2)
+            buscador1.guardar_registro()
+            buscador2.guardar_registro()
         else:
             messagebox.showwarning(
                 "Entrada inválida", "Por favor ingrese el producto y ambas marcas.")
 
-    tk.Button(root, text="Buscar", command=on_buscar).grid(
-        row=4, column=0, columnspan=2, pady=10)
+    def construir_url(self, producto, marca):
+        """
+        Construye la URL de búsqueda basada en el producto y la marca.
 
+        Args:
+            producto (str): El nombre del producto a buscar.
+            marca (str): La marca del producto a buscar.
+
+        Returns:
+            str: La URL completa de búsqueda.
+        """
+        busqueda_url = f'{producto}-{marca}'.replace(" ", "-")
+        return f'https://listado.mercadolibre.com.ar/{busqueda_url}#D[A:{producto.replace(" ", "%20")}]'
+
+    def mostrar_resultados(self, buscador1, buscador2):
+        """
+        Muestra los resultados de búsqueda en los Treeviews correspondientes.
+
+        Args:
+            buscador1 (BuscadorProductos): Objeto buscador de la marca 1.
+            buscador2 (BuscadorProductos): Objeto buscador de la marca 2.
+        """
+        self.limpiar_treeviews()
+        for index, producto in enumerate(buscador1.productos, start=1):
+            self.treeview1.insert('', 'end', values=(
+                index, producto.nombre, producto.precio))
+        for index, producto in enumerate(buscador2.productos, start=1):
+            self.treeview2.insert('', 'end', values=(
+                index, producto.nombre, producto.precio))
+
+    def limpiar_treeviews(self):
+        """
+        Limpia los Treeviews eliminando todos los elementos.
+        """
+        for child in self.treeview1.get_children():
+            self.treeview1.delete(child)
+        for child in self.treeview2.get_children():
+            self.treeview2.delete(child)
+
+
+def main():
+    """
+    Función principal que crea y ejecuta la interfaz gráfica.
+    """
+    root = tk.Tk()
+    app = InterfazGrafica(root)
     root.mainloop()
 
 
