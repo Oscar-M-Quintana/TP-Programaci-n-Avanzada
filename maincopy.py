@@ -134,6 +134,11 @@ def main():
     """
     Función principal que realiza la búsqueda de productos y guarda los resultados.
     """
+
+    solicitud_producto = input("Que producto desea comparar: ")
+    solicitud_marca = input("Que marcas desea comparar: ")
+    fin_solicitud = input("Desea agregar una marca mas?: (s/n)")
+
     terminos_busqueda = [
         ("Smart Tv 50 Pulgadas 4k Ultra Hd 50uq8050psb - LG", "LG", "50uq8050psb"),
         ("smart tv samsung 50 Un50cu7000 led 4k", "Samsung", "un50cu7000"),
