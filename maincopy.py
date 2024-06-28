@@ -1,7 +1,6 @@
 import csv
 import os
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,26 +37,24 @@ def registrar_busqueda(func):
     def wrapper(*args, **kwargs):
         resultado = func(*args, **kwargs)
         busqueda = args[0]
-        productos = [str(producto) for producto in busqueda.productos]
         data = {
             'fecha': datetime.now().strftime("%Y-%m-%d"),
             'busqueda': busqueda.url,
             'productos': busqueda.productos,
             'codigo': busqueda.codigo
         }
-        guardar_registro(data, busqueda.marca, busqueda.codigo)
+        guardar_registro(data, busqueda.marca)
         return resultado
     return wrapper
 
 
-def guardar_registro(data, marca, codigo):
+def guardar_registro(data, marca):
     """
     Guarda el registro de búsqueda en un archivo CSV.
 
     Args:
         data (dict): Datos de la búsqueda.
         marca (str): Marca del producto.
-        codigo (str): Código del producto.
     """
     filename = f'registro_busquedas_{marca}.csv'
     file_exists = os.path.isfile(filename)
@@ -66,14 +63,9 @@ def guardar_registro(data, marca, codigo):
         if not file_exists:
             writer.writerow(['Fecha de búsqueda', 'Producto', 'Precio'])
 
-        # Generar datos para 15 días
-        for i in range(15):
-            fecha = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-            for producto in data['productos']:
-                # Generar precio aleatorio
-                precio_aleatorio = random.randint(500000, 2000000) / 100
-                writer.writerow(
-                    [fecha, producto.nombre, f"${precio_aleatorio:.2f}"])
+        # Guardar los productos en el archivo CSV
+        for producto in data['productos']:
+            writer.writerow([data['fecha'], producto.nombre, producto.precio])
 
 
 class BuscadorProductos:
@@ -101,13 +93,13 @@ class BuscadorProductos:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
-        response = requests.get(self.url, headers=headers)
+        response = requests.get(self.url, headers=headers, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             lista_productos = soup.find_all(
                 'div', {'class': 'ui-search-result__content-wrapper'})
             # Limitar la búsqueda a los primeros 20 productos
-            for idx, producto in enumerate(lista_productos[:20], start=1):
+            for producto in lista_productos[:20]:
                 try:
                     nombre = producto.find(
                         'h2', {'class': 'ui-search-item__title'})
